@@ -118,6 +118,24 @@ uint32_t hdaddr(void *p) {
     }
 }
 
+bool get_method(const char *data, char *sip_method, size_t sip_method_size) {
+    char *p;
+    memcpy(sip_method, data, sip_method_size - 1);
+    sip_method[sip_method_size - 1] = ' ';
+    p = strchr(sip_method, ' ');
+    if (p != NULL) {
+       *p = '\0';
+       for (char *c = sip_method; c < p; c++){
+            if (!isupper(*c))
+                goto fail;
+       }
+        return true;
+    }
+fail:
+    sip_method[0] = '\0';
+    return false;
+}
+
 
 int main(int argc, char *argv[])
 {
@@ -397,6 +415,7 @@ int main(int argc, char *argv[])
 	    unsigned long datalen;
 	    unsigned long l;
 	    int idx=-1;
+            char sip_method[10] = "";
 
             if(res == 0)
                 /* Timeout elapsed */
@@ -472,24 +491,11 @@ int main(int argc, char *argv[])
                             pcap_dump_flush(ct->table[idx_leg].f_pcap);
                         }
                     }
-                }else if (htons(header_udp->source)==5060||
-                    htons(header_udp->dest)==5060){
+                }else if (get_method(data, sip_method, sizeof(sip_method)) ||
+                          memcmp(data, "SIP/2.0 ", sizeof("SIP/2.0 "))) {
                     char caller[256] = "";
                     char called[256] = "";
                     char callid[512] = "";
-                    char sip_method[256] = "";
-
-                    //figure out method
-                    memcpy(sip_method,data,sizeof(sip_method)-1);
-                    sip_method[sizeof(sip_method)-1]=' ';
-                    if (strchr(sip_method,' ')!=NULL){
-                        *strchr(sip_method,' ')='\0';
-                    }else{
-                        sip_method[0]='\0';
-                        if (verbosity>=2){
-                            printf("Empty SIP method!\n");
-                        }
-                    }
 
 		    data[datalen]=0;
                     if (get_sip_peername(data,datalen,"From:",caller,sizeof(caller))) {
