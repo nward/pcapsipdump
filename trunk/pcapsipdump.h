@@ -3,6 +3,7 @@
 
     This file is based on linux kernel, namely:
     - udp.h by Fred N. van Kempen, <waltje@uWalt.NL.Mugnet.ORG>
+    - tcp.h by Fred N. van Kempen, <waltje@uWalt.NL.Mugnet.ORG>
     - ip.h by Fred N. van Kempen, <waltje@uWalt.NL.Mugnet.ORG>
     - ipv6.h
 
