@@ -447,11 +447,11 @@ int main(int argc, char *argv[])
                    (offset_to_ip+sizeof(struct ipv6hdr)+sizeof(struct udphdr)) &&
                    header_ipv6->nexthdr == IPPROTO_UDP)
 #ifdef USE_TCP
-                 /* sane IPv4 TCP without */ ||
+                 /* sane IPv4 TCP */ ||
                  (header_ip->version == 4 && pkt_header->caplen >=
                    (offset_to_ip+sizeof(struct iphdr)+sizeof(struct tcphdr)) &&
                    header_ip->protocol == IPPROTO_TCP)
-                 /* sane IPv6 TCP without */ ||
+                 /* sane IPv6 TCP */ ||
                  (header_ipv6->version == 6 && pkt_header->caplen >=
                    (offset_to_ip+sizeof(struct ipv6hdr)+sizeof(struct tcphdr)) &&
                    header_ip->protocol == IPPROTO_TCP)
