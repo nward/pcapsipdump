@@ -69,7 +69,7 @@ struct ipv6hdr {
         uint8_t                 version:4,
                                 priority:4;
 #else
-#error Endian not defined                                                       
+#error "__{BIG,LITTLE}_ENDIAN is not defined"
 #endif
         uint8_t                 flow_lbl[3];
         uint16_t                payload_len;
@@ -86,8 +86,52 @@ struct udphdr {
 	uint16_t	check;
 };
 
+struct tcphdr {
+        uint16_t  source;
+        uint16_t  dest;
+        uint32_t  seq;
+        uint32_t  ack_seq;
+#if defined(__LITTLE_ENDIAN)
+        uint16_t   res1:4,
+                   doff:4,
+                   fin:1,
+                   syn:1,
+                   rst:1,
+                   psh:1,
+                   ack:1,
+                   urg:1,
+                   ece:1,
+                   cwr:1;
+#elif defined(__BIG_ENDIAN)
+        uint16_t   doff:4,
+                   res1:4,
+                   cwr:1,
+                   ece:1,
+                   urg:1,
+                   ack:1,
+                   psh:1,
+                   rst:1,
+                   syn:1,
+                   fin:1;
+#else
+#error "__{BIG,LITTLE}_ENDIAN is not defined"
+#endif
+        uint16_t  window;
+        uint16_t  check;
+        uint16_t  urg_ptr;
+};
+
+
 #ifndef ETH_ALEN
 #define ETH_ALEN 6
+#endif
+
+#ifndef IPPROTO_TCP
+#define IPPROTO_TCP 6
+#endif
+
+#ifndef IPPROTO_UDP
+#define IPPROTO_UDP 17
 #endif
 
 struct ether_header

@@ -147,7 +147,11 @@ int main(int argc, char *argv[])
     char *fname;/* pcap file to read on */
     char errbuf[PCAP_ERRBUF_SIZE];/* Error string */
     struct bpf_program fp;/* The compiled filter */
+#ifdef USE_TCP
+    char filter_exp[MAX_PCAP_FILTER_EXPRESSION] = "udp or tcp or vlan";/* The filter expression */
+#else
     char filter_exp[MAX_PCAP_FILTER_EXPRESSION] = "udp or vlan";/* The filter expression */
+#endif
     struct pcap_pkthdr *pkt_header; /* The header that pcap gives us */
     const u_char *pkt_data; /* The actual packet */
     unsigned long last_cleanup=0;
@@ -409,7 +413,6 @@ int main(int argc, char *argv[])
 	{
 	    struct iphdr *header_ip;
 	    struct ipv6hdr *header_ipv6;
-	    struct udphdr *header_udp;
 	    char *data;
 	    const char *s;
 	    unsigned long datalen;
@@ -438,20 +441,39 @@ int main(int argc, char *argv[])
             if ( /* sane IPv4 UDP */
                  (header_ip->version == 4 && pkt_header->caplen >=
                    (offset_to_ip+sizeof(struct iphdr)+sizeof(struct udphdr)) &&
-                   header_ip->protocol == 17) ||//UPPROTO_UDP=17
-                 /* sane IPv6 UDP */
+                   header_ip->protocol == IPPROTO_UDP)
+                 /* sane IPv6 UDP */ ||
                  (header_ipv6->version == 6 && pkt_header->caplen >=
                    (offset_to_ip+sizeof(struct ipv6hdr)+sizeof(struct udphdr)) &&
-                   header_ipv6->nexthdr == 17) ){
+                   header_ipv6->nexthdr == IPPROTO_UDP)
+#ifdef USE_TCP
+                 /* sane IPv4 TCP without */ ||
+                 (header_ip->version == 4 && pkt_header->caplen >=
+                   (offset_to_ip+sizeof(struct iphdr)+sizeof(struct tcphdr)) &&
+                   header_ip->protocol == IPPROTO_TCP)
+                 /* sane IPv6 TCP without */ ||
+                 (header_ipv6->version == 6 && pkt_header->caplen >=
+                   (offset_to_ip+sizeof(struct ipv6hdr)+sizeof(struct tcphdr)) &&
+                   header_ip->protocol == IPPROTO_TCP)
+#endif
+                 ){
                 int idx_leg=0;
                 int idx_rtp=0;
                 int save_this_rtp_packet=0;
                 int is_rtcp=0;
                 uint16_t rtp_port_mask=0xffff;
+                struct udphdr *header_udp;
+                struct tcphdr *tcph;
 
+                tcph=(tcphdr *)((char*)header_ip+
+                    ((header_ip->version == 4) ? sizeof(iphdr) : sizeof(ipv6hdr)));
                 header_udp=(udphdr *)((char*)header_ip+
                     ((header_ip->version == 4) ? sizeof(iphdr) : sizeof(ipv6hdr)));
-                data=(char *)header_udp+sizeof(*header_udp);
+                if (header_ip->protocol == 17) {
+                    data=(char *)header_udp+sizeof(*header_udp);
+                }else{
+                    data=(char *)((unsigned char *)tcph + (tcph->doff * 4));
+                }
                 datalen=pkt_header->len-((unsigned long)data-(unsigned long)pkt_data);
 
                 if (opt_rtpsave == RTPSAVE_RTP || opt_rtpsave == RTPSAVE_RTPEVENT){
