@@ -118,40 +118,34 @@ int calltable::find_by_call_id(
 }
 
 int calltable::add_ip_port(
-	    int call_idx,
+	    calltable_element *ce,
 	    in_addr_t addr,
 	    unsigned short port)
 {
-    int i,found;
-    int n=table[call_idx].ip_n;
-    if (n>=calltable_max_ip_per_call){
-	return -1;	
+    if (ce->ip_n >= calltable_max_ip_per_call) {
+        return -1;
     }
-    found=0;
-    for(i=0;i<n;i++){
-	if(table[call_idx].ip[i]==addr && 
-	   table[call_idx].port[i]==port){
-	    found=1;
-	    break;
-	} 
+    for(int i=0; i < ce->ip_n; i++){
+        if(ce->ip[i] == addr && ce->port[i] == port) {
+            // we already track this ip:port tuple
+            return 0;
+        }
     }
-    if(!found){
-	table[call_idx].ip[n]=addr;
-	table[call_idx].port[n]=port;
-	table[call_idx].ip_n++;
+    ce->ip[ce->ip_n] = addr;
+    ce->port[ce->ip_n] = port;
 #ifdef USE_CALLTABLE_CACHE
-        cache[(struct addr_port){addr, port}] = (struct ileg_irtp_ssrc){call_idx, n, 0};
+    cache[(struct addr_port){addr, port}] = (struct ce_irtp_ssrc){ce, ce->ip_n, 0};
 #endif
-    }
+    ce->ip_n++;
     return 0;
 }
 
-//returns 1 if found or 0 if not found, and updates idx_leg and idx_rtp
+//returns 1 if found or 0 if not found, and updates ce and idx_rtp
 int calltable::find_ip_port_ssrc(
             in_addr_t addr,
             unsigned short port,
             uint32_t ssrc,
-            int *idx_leg,
+            calltable_element **ce,
             int *idx_rtp)
 {
     int i_leg,i_rtp;
@@ -160,18 +154,18 @@ int calltable::find_ip_port_ssrc(
     struct addr_port ap = {addr, port};
     while(true){
         if(this->cache.count(ap)){
-            *idx_leg = cache[ap].ileg;
+            *ce = cache[ap].ce;
             *idx_rtp = cache[ap].irtp;
-            if(*idx_leg >= 0){
+            if(*ce != NULL){
                 if(ssrc != cache[ap].ssrc){ // new ssid
-                    if(table[*idx_leg].had_bye){ // and call has finished
+                    if((*ce)->had_bye){ // and call has finished
                         // that's probably ip/port reuse
                         cache.erase(ap);
                         break; // abandon cache code, go to full search
                     }else{
                         //got new ssrc in the same ongoing call - update table & cache
-                        table[*idx_leg].ssrc[*idx_rtp] = ssrc;
-                        cache[ap] = (struct ileg_irtp_ssrc){*idx_leg, *idx_rtp, ssrc};
+                        (*ce)->ssrc[*idx_rtp] = ssrc;
+                        cache[ap] = (struct ce_irtp_ssrc){*ce, *idx_rtp, ssrc};
                     }
                 }
                 return 1;
@@ -188,11 +182,11 @@ int calltable::find_ip_port_ssrc(
                table[i_leg].ip  [i_rtp] == addr){
                 if(!table[i_leg].had_bye || table[i_leg].ssrc[i_rtp]==ssrc){
 #ifdef USE_CALLTABLE_CACHE
-                    cache[ap] = (struct ileg_irtp_ssrc){i_leg, i_rtp, ssrc};
+                    cache[ap] = (struct ce_irtp_ssrc){&table[i_leg], i_rtp, ssrc};
 #endif
                     table[i_leg].ssrc[i_rtp]=ssrc;
-                    *idx_leg=i_leg;
-                    *idx_rtp=i_rtp;
+                    *ce = &table[i_leg];
+                    *idx_rtp = i_rtp;
                     return 1;
                 }
             }
@@ -201,7 +195,7 @@ int calltable::find_ip_port_ssrc(
 #ifdef USE_CALLTABLE_CACHE
     // add negative cache entry
     // TODO: how do we clean those up, to avoid memory leak?
-    cache[ap] = (struct ileg_irtp_ssrc){-1, -1, 0};
+    cache[ap] = (struct ce_irtp_ssrc){NULL, -1, 0};
 #endif
     return 0;
 }

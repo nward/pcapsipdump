@@ -12,8 +12,10 @@ void populate_calltable(calltable *ct, int n_elements){
 
         sprintf(call_id, "%d", i);
         call_idx = ct->add(call_id, strlen(call_id), 0);
+        calltable_element *ce = ct->table;
         for (int j=0; j < calltable_max_ip_per_call; j++){
-            ct->add_ip_port(call_idx, (in_addr_t) i, (unsigned short) i);
+            ct->add_ip_port(ce, (in_addr_t) i, (unsigned short) i);
+            ce += sizeof(calltable_element);
         }
     }
 }
