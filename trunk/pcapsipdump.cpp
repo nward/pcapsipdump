@@ -58,7 +58,7 @@
 #define MIN(x,y) ((x) < (y) ? (x) : (y))
 
 int get_sip_peername(char *data, int data_len, const char *tag, char *caller, int caller_len);
-int get_ip_port_from_sdp(char *sdp_text, in_addr_t *addr, unsigned short *port);
+int get_ip_port_from_sdp(const char *sdp, size_t sdplen, in_addr_t *addr, unsigned short *port);
 uint32_t get_ssrc (void *ip_packet_data, bool is_rtcp);
 long long parse_size_string(char *s);
 #ifndef _GNU_SOURCE
@@ -66,6 +66,8 @@ void *memmem(const void* haystack, size_t hl, const void* needle, size_t nl);
 #endif
 
 calltable *ct;
+int verbosity=0;
+int opt_t38only=0;
 
 void sigint_handler(int param)
 {
@@ -136,6 +138,27 @@ fail:
     return false;
 }
 
+int parse_sdp(const char *sdp, size_t sdplen, calltable_element *ce)
+{
+    in_addr_t addr;
+    unsigned short port;
+    if (! get_ip_port_from_sdp(sdp, sdplen, &addr, &port)){
+        ct->add_ip_port(ce, addr, port);
+    }else{
+        if (verbosity >= 2) {
+            printf("Can't get ip/port from SDP:\n%s\n\n", sdp);
+            return -1;
+        }
+    }
+    unsigned char rtpmap_event = sdp_get_rtpmap_event(sdp);
+    if (rtpmap_event) {
+        ce->rtpmap_event = rtpmap_event;
+    }
+    if (opt_t38only && memmem(sdp, sdplen, "udptl t38", 9)!=NULL){
+        ce->had_t38=1;
+    }
+    return 0;
+}
 
 int main(int argc, char *argv[])
 {
@@ -160,9 +183,7 @@ int main(int argc, char *argv[])
     int opt_fork=1;
     int opt_promisc=1;
     int opt_packetbuffered=0;
-    int opt_t38only=0;
     int opt_rtpsave=RTPSAVE_RTP_RTCP;
-    int verbosity=0;
     int opt_call_skip_n=1; /* By default, record every first call, i.e. record all */
     int call_skip_cnt=1;
     int opt_pcap_buffer_size=0; /* Operating system capture buffer size, a.k.a. libpcap ring buffer size */
@@ -457,7 +478,7 @@ int main(int argc, char *argv[])
                    header_ip->protocol == IPPROTO_TCP)
 #endif
                  ){
-                int idx_leg=0;
+                calltable_element *ce=NULL;
                 int idx_rtp=0;
                 int save_this_rtp_packet=0;
                 int is_rtcp=0;
@@ -490,27 +511,27 @@ int main(int argc, char *argv[])
                         ct->find_ip_port_ssrc(
                             hdaddr(header_ip),htons(header_udp->dest) & rtp_port_mask,
                             get_ssrc(data,is_rtcp),
-                            &idx_leg,&idx_rtp)){
-                    if (ct->table[idx_leg].f_pcap != NULL &&
+                            &ce, &idx_rtp)){
+                    if (ce->f_pcap != NULL &&
                         (opt_rtpsave != RTPSAVE_RTPEVENT ||
-                         data[1] == ct->table[idx_leg].rtpmap_event)){
-                        ct->table[idx_leg].last_packet_time=pkt_header->ts.tv_sec;
-                        pcap_dump((u_char *)ct->table[idx_leg].f_pcap,pkt_header,pkt_data);
+                         data[1] == ce->rtpmap_event)) {
+                        ce->last_packet_time=pkt_header->ts.tv_sec;
+                        pcap_dump((u_char *)ce->f_pcap, pkt_header, pkt_data);
                         if (opt_packetbuffered) {
-                            pcap_dump_flush(ct->table[idx_leg].f_pcap);
+                            pcap_dump_flush(ce->f_pcap);
                         }
                     }
                 }else if (save_this_rtp_packet &&
                         ct->find_ip_port_ssrc(
                             hsaddr(header_ip),htons(header_udp->source) & rtp_port_mask,
                             get_ssrc(data,is_rtcp),
-                            &idx_leg,&idx_rtp)){
-                    if (ct->table[idx_leg].f_pcap != NULL &&
-                        (opt_rtpsave != RTPSAVE_RTPEVENT || data[1] == ct->table[idx_leg].rtpmap_event)){    
-                        ct->table[idx_leg].last_packet_time=pkt_header->ts.tv_sec;
-                        pcap_dump((u_char *)ct->table[idx_leg].f_pcap,pkt_header,pkt_data);
+                            &ce, &idx_rtp)){
+                    if (ce->f_pcap != NULL &&
+                        (opt_rtpsave != RTPSAVE_RTPEVENT || data[1] == ce->rtpmap_event)) {
+                        ce->last_packet_time=pkt_header->ts.tv_sec;
+                        pcap_dump((u_char *)ce->f_pcap, pkt_header, pkt_data);
                         if (opt_packetbuffered) {
-                            pcap_dump_flush(ct->table[idx_leg].f_pcap);
+                            pcap_dump_flush(ce->f_pcap);
                         }
                     }
                 }else if (get_method(data, sip_method, sizeof(sip_method)) ||
@@ -581,24 +602,12 @@ int main(int argc, char *argv[])
                           gettag(data,datalen,"c:",&l);
                         if (l > 0 && s && strncasecmp(s, "application/sdp", l) == 0 &&
                                 (sdp = strstr(data,"\r\n\r\n")) != NULL) {
-                            in_addr_t tmp_addr;
-                            unsigned short tmp_port;
-                            if (! get_ip_port_from_sdp(sdp, &tmp_addr, &tmp_port)){
-                                ct->add_ip_port(idx, tmp_addr, tmp_port);
-                            }else{
-                                if (verbosity >= 2) {
-                                    printf("Can't get ip/port from SDP:\n%s\n\n", sdp);
-                                }
-                            }
-                            unsigned char rtpmap_event = sdp_get_rtpmap_event(sdp);
-                            if (rtpmap_event) {
-                                ct->table[idx].rtpmap_event = rtpmap_event;
-                            }
-                            if (opt_t38only && memmem(data,datalen,"udptl t38",9)!=NULL){
-                                ct->table[idx].had_t38=1;
-                            }
+                            parse_sdp(sdp, datalen - (sdp - data), &ct->table[idx]);
+                        } else if (l > 0 && s && strncasecmp(s, "multipart/mixed;boundary=", MIN(l,25)) == 0 &&
+                                (sdp = strstr(data,"\r\n\r\n")) != NULL) {
+                            // FIXME: do proper mime miltipart parsing
+                            parse_sdp(sdp, datalen - (sdp - data), &ct->table[idx]);
                         }
-
                         if (ct->table[idx].f_pcap!=NULL){
                             pcap_dump((u_char *)ct->table[idx].f_pcap,pkt_header,pkt_data);
                             if (opt_packetbuffered) {pcap_dump_flush(ct->table[idx].f_pcap);}
@@ -657,11 +666,11 @@ fail_exit:
     return 1;
 }
 
-int get_ip_port_from_sdp(char *sdp_text, in_addr_t *addr, unsigned short *port){
+int get_ip_port_from_sdp(const char *sdp, size_t sdplen, in_addr_t *addr, unsigned short *port){
     unsigned long l;
     const char *s;
     char s1[20];
-    s=gettag(sdp_text,strlen(sdp_text),"c=IN IP4 ",&l);
+    s = gettag(sdp, sdplen, "c=IN IP4 ", &l);
     memset(s1,'\0',sizeof(s1));
     memcpy(s1,s,MIN(l,19));
     if ((long)(*addr=inet_addr(s1))==-1){
@@ -669,9 +678,9 @@ int get_ip_port_from_sdp(char *sdp_text, in_addr_t *addr, unsigned short *port){
 	*port=0;
 	return 1;
     }
-    s=gettag(sdp_text,strlen(sdp_text),"m=audio ",&l);
+    s = gettag(sdp, sdplen, "m=audio ", &l);
     if (l==0){
-        s=gettag(sdp_text,strlen(sdp_text),"m=image ",&l);
+        s=gettag(sdp, sdplen, "m=image ", &l);
     }
     if (l==0 || (*port=atoi(s))==0){
 	*port=0;

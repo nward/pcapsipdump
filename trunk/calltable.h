@@ -57,8 +57,8 @@ struct addr_port {
     in_addr_t addr;
     uint16_t  port;
 };
-struct ileg_irtp_ssrc {
-    int ileg;
+struct ce_irtp_ssrc {
+    calltable_element *ce;
     int irtp;
     uint32_t ssrc;
 };
@@ -78,7 +78,7 @@ class calltable
 	    const char *call_id,
 	    unsigned long call_id_len);
 	int add_ip_port(
-	    int call_idx,
+	    calltable_element *ce,
 	    in_addr_t addr,
 	    unsigned short port);
 	int find_ip_port(
@@ -88,7 +88,7 @@ class calltable
             in_addr_t addr,
             unsigned short port,
             uint32_t ssrc,
-            int *idx_leg,
+            calltable_element **ce,
             int *idx_rtp);
 	int do_cleanup( time_t currtime );
 	std::vector <calltable_element> table;
@@ -97,7 +97,7 @@ class calltable
     private:
 	time_t global_last_packet_time;
 #ifdef USE_CALLTABLE_CACHE
-        std::map <addr_port, ileg_irtp_ssrc> cache;
+        std::map <addr_port, ce_irtp_ssrc> cache;
         std::map <std::string, int> call_id_cache;
 #endif
 };
