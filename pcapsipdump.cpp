@@ -298,7 +298,7 @@ int main(int argc, char *argv[])
                 "                   [-v level] [-R filter] [-m filter] [-n filter] [-l filter]\n"
                 "                   [-B size] [-T limit] [-t trigger:action:param] [expression]\n"
 		" -f   Do not fork or detach from controlling terminal.\n"
-		" -P   When foking, save PID to this file (default /var/run/pcapsipdump.pid)\n"
+		" -P   When forking, save PID to this file (default /var/run/pcapsipdump.pid).\n"
 		" -p   Do not put the interface into promiscuous mode.\n"
 		" -U   Make .pcap files writing 'packet-buffered' - slower method,\n"
 		"      but you can use partitially written file anytime, it will be consistent.\n"
