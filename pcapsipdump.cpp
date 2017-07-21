@@ -202,7 +202,7 @@ int main(int argc, char *argv[])
     while(1) {
         signed char c;
 
-        c = getopt (argc, argv, "i:r:d:v:m:n:R:l:B:T:t:fpU");
+        c = getopt (argc, argv, "i:r:d:v:m:n:R:l:B:T:t:P:fpU");
         if (c == -1)
             break;
 
@@ -275,6 +275,9 @@ int main(int argc, char *argv[])
             case 't':
                 trigger.add(optarg);
                 break;
+            case 'P':
+                pid_file = optarg;
+                break;
         }
     }
 
@@ -291,10 +294,11 @@ int main(int argc, char *argv[])
 
     if ((fname==NULL)&&(ifname==NULL)){
 	printf( "pcapsipdump version %s\n"
-		"Usage: pcapsipdump [-fpUt] [-i <interface> | -r <file>] [-d <working directory>]\n"
+		"Usage: pcapsipdump [-fpU] [-i interface | -r file] [-d output_directory] [-P pid_file]\n"
                 "                   [-v level] [-R filter] [-m filter] [-n filter] [-l filter]\n"
                 "                   [-B size] [-T limit] [-t trigger:action:param] [expression]\n"
 		" -f   Do not fork or detach from controlling terminal.\n"
+		" -P   When foking, save PID to this file (default /var/run/pcapsipdump.pid)\n"
 		" -p   Do not put the interface into promiscuous mode.\n"
 		" -U   Make .pcap files writing 'packet-buffered' - slower method,\n"
 		"      but you can use partitially written file anytime, it will be consistent.\n"
