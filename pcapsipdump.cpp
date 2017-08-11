@@ -463,7 +463,19 @@ int main(int argc, char *argv[])
                 header_ip = (iphdr *)((char*)pkt_data + offset_to_ip + 4);
             }
             header_ipv6=(ipv6hdr *)header_ip;
-            if ( /* sane IPv4 UDP */
+            if (header_ip->version == 4 && (header_ip->frag_off & htons(0x1fff)) > 0) { // fragment offset > 0
+                struct addr_addr_id aai = (struct addr_addr_id){header_ip->saddr,
+                                                               header_ip->daddr,
+                                                               header_ip->id};
+                pcap_dumper_t *f = ct->get_ipfrag(aai);
+                if (f) {
+                    pcap_dump((u_char *)f,pkt_header,pkt_data);
+                    if (opt_packetbuffered) {pcap_dump_flush(f);}
+                    if ((header_ip->frag_off & htons(0x2000)) == 0 ) { // more_fragments == 0
+                        ct->delete_ipfrag(aai);
+                    }
+                }
+            } else if ( /* sane IPv4 UDP */
                  (header_ip->version == 4 && pkt_header->caplen >=
                    (offset_to_ip+sizeof(struct iphdr)+sizeof(struct udphdr)) &&
                    header_ip->protocol == IPPROTO_UDP)
@@ -617,6 +629,11 @@ int main(int argc, char *argv[])
                             if (opt_packetbuffered) {pcap_dump_flush(ct->table[idx].f_pcap);}
                         }
 		    }
+                    if (header_ip->version == 4 && header_ip->frag_off == htons(0x2000)) { //flags == more fragments and offset == 0
+                        ct->add_ipfrag((struct addr_addr_id){header_ip->saddr,
+                                                             header_ip->daddr,
+                                                             header_ip->id}, ct->table[idx].f_pcap);
+                    }
 		}else{
 		    if (verbosity>=3){
 			char st1[INET6_ADDRSTRLEN];

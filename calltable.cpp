@@ -31,9 +31,15 @@
 #define MAX(x,y) ((x) > (y) ? (x) : (y))
 #define MIN(x,y) ((x) < (y) ? (x) : (y))
 
-#ifdef USE_CALLTABLE_CACHE
 using namespace std;
+bool operator <(addr_addr_id const& a, addr_addr_id const& b)
+{
+    return a.saddr  < b.saddr ||
+          (a.saddr == b.saddr && a.daddr  < b.daddr ) ||
+          (a.saddr == b.saddr && a.daddr == b.daddr && a.id < b.id );
+}
 
+#ifdef USE_CALLTABLE_CACHE
 bool operator <(addr_port const& a, addr_port const& b)
 {
     return a.addr < b.addr || (a.addr == b.addr && a.port < b.port );
@@ -236,4 +242,16 @@ int calltable::do_cleanup( time_t currtime ){
 	}
     }
     return 0;
+}
+
+void calltable::add_ipfrag(struct addr_addr_id aai, pcap_dumper_t *f) {
+    ipfrags[aai] = f;
+}
+
+void calltable::delete_ipfrag(struct addr_addr_id aai) {
+    ipfrags.erase(aai);
+}
+
+pcap_dumper_t *calltable::get_ipfrag(struct addr_addr_id aai) {
+    return ipfrags[aai];
 }
