@@ -23,10 +23,8 @@
 #define INT32_MAX                (2147483647)
 
 #include <vector>
-#ifdef USE_CALLTABLE_CACHE
 #include <string>
 #include <map>
-#endif
 
 #include <pcap.h>
 #include <arpa/inet.h>
@@ -50,6 +48,12 @@ struct calltable_element {
 	time_t last_packet_time;
 	pcap_dumper_t *f_pcap;
 	char fn_pcap[128];
+};
+
+struct addr_addr_id {
+    in_addr_t saddr;
+    in_addr_t daddr;
+    uint16_t  id;
 };
 
 #ifdef USE_CALLTABLE_CACHE
@@ -90,8 +94,16 @@ class calltable
             uint32_t ssrc,
             calltable_element **ce,
             int *idx_rtp);
+        void add_ipfrag(
+            struct addr_addr_id aai,
+            pcap_dumper_t *f);
+        void delete_ipfrag(
+            struct addr_addr_id aai);
+        pcap_dumper_t *get_ipfrag(
+            struct addr_addr_id aai);
 	int do_cleanup( time_t currtime );
 	std::vector <calltable_element> table;
+        std::map <addr_addr_id, pcap_dumper_t *> ipfrags;
 	bool erase_non_t38;
         int opt_absolute_timeout;
     private:
