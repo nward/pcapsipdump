@@ -80,7 +80,11 @@ int opts_sanity_check_d(char **opt_fntemplate)
     FILE *f;
 
     expand_dir_template(s, sizeof(s), *opt_fntemplate, "", "", "", 0);
-    if (stat(s, &sb) == 0 && S_ISDIR(sb.st_mode)) {
+    if (stat(s, &sb) == 0) {
+        if (!S_ISDIR(sb.st_mode)) {
+            fprintf(stderr, "Bad option '-d %s': File exists (expecting directory name or filename template)", orig_opt_fntemplate);
+            return(2);
+        }
         // Looks like user has specified bare directory in '-d' option.
         // First, make sure we can create files in that directory
         strcat(s, "/tmp-siJNlSdiugQ3iyjaPNW");
@@ -96,9 +100,12 @@ int opts_sanity_check_d(char **opt_fntemplate)
         strcpy(*opt_fntemplate, orig_opt_fntemplate);
         strcat(*opt_fntemplate, "/%Y%m%d/%H/%Y%m%d-%H%M%S-%f-%t-%i.pcap");
         expand_dir_template(s, sizeof(s), orig_opt_fntemplate, "", "", "", 0);
-    }else{
+    } else {
+        if (!strchr(*opt_fntemplate, '%') || !strchr(s, '/')) {
+            fprintf(stderr, "Bad option '-d %s': Neither directory nor filename template", orig_opt_fntemplate);
+            return(2);
         // (try to) create directory hierarchy
-        if (strchr(s, '/') && mkdir_p(dirname(s), 0777)) {
+        } else if (mkdir_p(dirname(s), 0777)) {
             fprintf(stderr, "Can't create directory for '-d %s': ", orig_opt_fntemplate);
             perror (s);
             return(2);
