@@ -506,7 +506,7 @@ int main(int argc, char *argv[])
                     ((header_ip->version == 4) ? sizeof(iphdr) : sizeof(ipv6hdr)));
                 header_udp=(udphdr *)((char*)header_ip+
                     ((header_ip->version == 4) ? sizeof(iphdr) : sizeof(ipv6hdr)));
-                if (header_ip->protocol == 17) {
+                if (header_ip->protocol == IPPROTO_UDP || header_ipv6->nexthdr == IPPROTO_UDP) {
                     data=(char *)header_udp+sizeof(*header_udp);
                 }else{
                     data=(char *)((unsigned char *)tcph + (tcph->doff * 4));
