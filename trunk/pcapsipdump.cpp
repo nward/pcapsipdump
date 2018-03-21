@@ -629,11 +629,11 @@ int main(int argc, char *argv[])
                             pcap_dump((u_char *)ct->table[idx].f_pcap,pkt_header,pkt_data);
                             if (opt_packetbuffered) {pcap_dump_flush(ct->table[idx].f_pcap);}
                         }
-		    }
-                    if (header_ip->version == 4 && header_ip->frag_off == htons(0x2000)) { //flags == more fragments and offset == 0
-                        ct->add_ipfrag((struct addr_addr_id){header_ip->saddr,
-                                                             header_ip->daddr,
-                                                             header_ip->id}, ct->table[idx].f_pcap);
+                        if (header_ip->version == 4 && header_ip->frag_off == htons(0x2000)) { //flags == more fragments and offset == 0
+                            ct->add_ipfrag((struct addr_addr_id){header_ip->saddr,
+                                                                 header_ip->daddr,
+                                                                 header_ip->id}, ct->table[idx].f_pcap);
+		        }
                     }
 		}else{
 		    if (verbosity>=3){
