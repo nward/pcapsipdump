@@ -79,7 +79,7 @@ int opts_sanity_check_d(char **opt_fntemplate)
     struct stat sb;
     FILE *f;
 
-    expand_dir_template(s, sizeof(s), *opt_fntemplate, "", "", "", 0);
+    expand_dir_template(s, sizeof(s), *opt_fntemplate, "", "", "", (int)time(NULL));
     if (stat(s, &sb) == 0) {
         if (!S_ISDIR(sb.st_mode)) {
             fprintf(stderr, "Bad option '-d %s': File exists (expecting directory name or filename template)", orig_opt_fntemplate);

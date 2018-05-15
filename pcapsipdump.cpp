@@ -32,6 +32,7 @@
 #include <ctype.h>
 #include <string.h>
 #include <unistd.h>
+#include <pwd.h>
 #include <time.h>
 #include <signal.h>
 #include <sys/stat.h>
@@ -165,7 +166,7 @@ int main(int argc, char *argv[])
 
     pcap_t *handle;/* Session handle */
     // directory/filename template, where .pcap files are written
-    char *opt_fntemplate = (char *)"/var/spool/pcapsipdump/%Y%m%d/%H/%Y%m%d-%H%M%S-%f-%t-%i.pcap";
+    char *opt_fntemplate;
     char *ifname;/* interface to sniff on */
     char *fname;/* pcap file to read on */
     char errbuf[PCAP_ERRBUF_SIZE];/* Error string */
@@ -194,6 +195,14 @@ int main(int argc, char *argv[])
     number_filter.allocated=0;
     const char *pid_file="/var/run/pcapsipdump.pid";
 
+    if ((int)getuid()){
+        struct passwd *pw = getpwuid(getuid());
+        opt_fntemplate = (char *)malloc(512);
+        strncpy(opt_fntemplate, pw->pw_dir, 512);
+        strncat(opt_fntemplate, "/.var/spool/pcapsipdump/%Y%m%d/%H/%Y%m%d-%H%M%S-%f-%t-%i.pcap", 512-62-1);
+    }else{
+        opt_fntemplate = (char *)"/var/spool/pcapsipdump/%Y%m%d/%H/%Y%m%d-%H%M%S-%f-%t-%i.pcap";
+    }
     ifname=NULL;
     fname=NULL;
     regcomp(&method_filter, "^(INVITE|OPTIONS|REGISTER)$", REG_EXTENDED);
