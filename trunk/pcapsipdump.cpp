@@ -20,13 +20,6 @@
     Project's home: http://pcapsipdump.sf.net/
 */
 
-#ifdef sparc
-#define __BIG_ENDIAN 1
-#endif
-#ifndef sparc
-#include <endian.h>
-#endif
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <ctype.h>
@@ -38,13 +31,16 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <sys/socket.h>
 #include <regex.h>
 #include <libgen.h>
 
-#ifdef USE_BSD_STRING_H
-#include <bsd/string.h>
-#else
-#define strlcpy strncpy
+#ifndef BSD
+  #ifdef USE_BSD_STRING_H
+    #include <bsd/string.h>
+  #else
+    #define strlcpy strncpy
+  #endif
 #endif
 
 #include <pcap.h>
@@ -99,10 +95,10 @@ uint32_t hsaddr(void *p) {
     }else{
         // Ad-hoc 128bit -> 32bit hash function
         return (uint32_t)(
-            (uint32_t)(header_ipv6->saddr.s6_addr32[0])+
-            (uint32_t)(header_ipv6->saddr.s6_addr32[1]*19)+
-            (uint32_t)(header_ipv6->saddr.s6_addr32[2]*37)+
-            (uint32_t)(header_ipv6->saddr.s6_addr32[3]*109));
+            (uint32_t)(header_ipv6->saddr[0])+
+            (uint32_t)(header_ipv6->saddr[1]*19)+
+            (uint32_t)(header_ipv6->saddr[2]*37)+
+            (uint32_t)(header_ipv6->saddr[3]*109));
     }
 }
 
@@ -114,10 +110,10 @@ uint32_t hdaddr(void *p) {
     }else{
         // Ad-hoc 128bit -> 32bit hash function
         return (uint32_t)(
-            (uint32_t)(header_ipv6->daddr.s6_addr32[0])+
-            (uint32_t)(header_ipv6->daddr.s6_addr32[1]*19)+
-            (uint32_t)(header_ipv6->daddr.s6_addr32[2]*37)+
-            (uint32_t)(header_ipv6->daddr.s6_addr32[3]*109));
+            (uint32_t)(header_ipv6->daddr[0])+
+            (uint32_t)(header_ipv6->daddr[1]*19)+
+            (uint32_t)(header_ipv6->daddr[2]*37)+
+            (uint32_t)(header_ipv6->daddr[3]*109));
     }
 }
 
@@ -190,9 +186,9 @@ int main(int argc, char *argv[])
     int opt_pcap_buffer_size=0; /* Operating system capture buffer size, a.k.a. libpcap ring buffer size */
     int opt_absolute_timeout = INT32_MAX;
     bool number_filter_matched=false;
+    bool number_filter_in_use=false;
     regex_t number_filter, method_filter;
     regmatch_t pmatch[1];
-    number_filter.allocated=0;
     const char *pid_file="/var/run/pcapsipdump.pid";
 
     if ((int)getuid()){
@@ -229,6 +225,7 @@ int main(int argc, char *argv[])
                 break;
             case 'n':
                 regcomp(&number_filter, optarg, REG_EXTENDED);
+                number_filter_in_use = true;
                 break;
             case 'R':
                 if (strcasecmp(optarg,"none")==0){
@@ -578,7 +575,7 @@ int main(int argc, char *argv[])
                     memcpy(callid, s, l);
                     callid[l] = '\0';
                     number_filter_matched=false;
-                    if ((number_filter.allocated==0) ||
+                    if (!number_filter_in_use ||
                         (regexec(&number_filter, caller, 1, pmatch, 0)==0) ||
                         (regexec(&number_filter, called, 1, pmatch, 0)==0)) {
                         number_filter_matched=true;
@@ -604,8 +601,7 @@ int main(int argc, char *argv[])
                                                         pkt_header->ts.tv_sec);
                                     if (strchr(fn, '/')) {
                                         strcpy(dn, fn);
-                                        dirname(dn);
-                                        mkdir_p(dn, 0777);
+                                        mkdir_p(dirname(dn), 0777);
                                     }
                                     ct->table[idx].f_pcap = pcap_dump_open(handle, fn);
                                     strlcpy(ct->table[idx].fn_pcap, fn, sizeof(ct->table[idx].fn_pcap));
