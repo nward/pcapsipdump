@@ -448,9 +448,7 @@ int main(int argc, char *argv[])
                 continue;
 
 	    if (pkt_header->ts.tv_sec-last_cleanup>15){
-		if (last_cleanup>=0){
-		    ct->do_cleanup(pkt_header->ts.tv_sec);
-		}
+		ct->do_cleanup(pkt_header->ts.tv_sec);
 		last_cleanup=pkt_header->ts.tv_sec;
 	    }
             header_ip = (iphdr *)((char*)pkt_data + offset_to_ip);
