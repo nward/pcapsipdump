@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <time.h>
 
+#include "pcapsipdump_lib.h"
 
 // equivalent of "mkdir -p"
 int mkdir_p(const char *path, mode_t mode) {
@@ -16,7 +17,7 @@ int mkdir_p(const char *path, mode_t mode) {
     if (stat(path, &sb) == 0) {
         return 0;
     } else {
-        strncpy(s, path, sizeof(s));
+        strlcpy(s, path, sizeof(s));
         p = strrchr(s, '/');
         if (p != NULL) {
             *p = '\0';

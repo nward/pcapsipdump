@@ -28,8 +28,9 @@
 #include "trigger.h"
 #include "calltable.h"
 
-#define MAX(x,y) ((x) > (y) ? (x) : (y))
+#ifndef MIN
 #define MIN(x,y) ((x) < (y) ? (x) : (y))
+#endif
 
 using namespace std;
 bool operator <(addr_addr_id const& a, addr_addr_id const& b)
