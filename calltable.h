@@ -20,7 +20,9 @@
     Project's home: http://pcapsipdump.sf.net/
 */
 
+#ifndef INT32_MAX
 #define INT32_MAX                (2147483647)
+#endif
 
 #include <vector>
 #include <string>

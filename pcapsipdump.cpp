@@ -34,15 +34,6 @@
 #include <sys/socket.h>
 #include <regex.h>
 #include <libgen.h>
-
-#ifndef BSD
-  #ifdef USE_BSD_STRING_H
-    #include <bsd/string.h>
-  #else
-    #define strlcpy strncpy
-  #endif
-#endif
-
 #include <pcap.h>
 
 #include "calltable.h"
@@ -51,8 +42,9 @@
 #include "pcapsipdump_strlib.h"
 #include "pcapsipdump_lib.h"
 
-#define MAX(x,y) ((x) > (y) ? (x) : (y))
+#ifndef MIN
 #define MIN(x,y) ((x) < (y) ? (x) : (y))
+#endif
 
 int get_sip_peername(char *data, int data_len, const char *tag, char *caller, int caller_len);
 int get_ip_port_from_sdp(const char *sdp, size_t sdplen, in_addr_t *addr, unsigned short *port);
