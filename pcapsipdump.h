@@ -28,7 +28,18 @@
 
 #define PCAPSIPDUMP_VERSION "0.2-trunk"
 
-#define INT32_MAX                (2147483647)
+#if !defined (__LITTLE_ENDIAN) && !defined (__BIG_ENDIAN)
+  #include <sys/param.h>
+  #if __LITTLE_ENDIAN__ || __BYTE_ORDER == __LITTLE_ENDIAN
+    #define __LITTLE_ENDIAN 1
+  #elif __BIG_ENDIAN__ || __BYTE_ORDER == __BIG_ENDIAN
+    #define __BIG_ENDIAN 1
+  #elif sparc
+    #define __BIG_ENDIAN 1
+  #else
+    #error Endianness not defined
+  #endif
+#endif
 
 #if !defined(PCAP_NETMASK_UNKNOWN)
 /*
@@ -76,8 +87,8 @@ struct ipv6hdr {
         uint16_t                payload_len;
         uint8_t                 nexthdr;
         uint8_t                 hop_limit;
-        struct  in6_addr        saddr;
-        struct  in6_addr        daddr;
+        uint32_t                saddr[4];
+        uint32_t                daddr[4];
 };
 
 struct udphdr {
