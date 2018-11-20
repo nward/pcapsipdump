@@ -41,21 +41,37 @@ size_t expand_dir_template(char *s, size_t max, const char *format,
     size_t s1l = fl + 256;
     char *s1 = (char *)malloc(s1l);
     char *s1p = s1;
+    char asciisan[128] = {
+        '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_',
+        '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_',
+        '_', '_', '_', '#', '_', '%', '&', '_', '(', ')', '_', '+', ',', '-', '.', '_',
+        '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '_', ';', '_', '=', '_', '_',
+        '@', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O',
+        'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', '[', '_', ']', '^', '_',
+        '_', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o',
+        'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', '{', '_', '}', '~', '_'
+    };
     for (size_t i = 0; i <= fl; i++) {
         char c0 = format[i];
         if (c0 == '%' && i < fl - 1) {
             char c1 = format[i+1];
             if (c1 == 'f' && (s1l - (s1p - s1)) > strlen(from) ){
                 strcpy(s1p, from);
-                s1p += strlen(from);
+                for(;*s1p;s1p++){
+                    *s1p = asciisan[*s1p & 0x7f];
+                }
                 i++;
             } else if (c1 == 't' && (s1l - (s1p - s1)) > strlen(to) ){
                 strcpy(s1p, to);
-                s1p += strlen(to);
+                for(;*s1p;s1p++){
+                    *s1p = asciisan[*s1p & 0x7f];
+                }
                 i++;
             } else if (c1 == 'i' && (s1l - (s1p - s1)) > strlen(callid) ){
                 strcpy(s1p, callid);
-                s1p += strlen(callid);
+                for(;*s1p;s1p++){
+                    *s1p = asciisan[*s1p & 0x7f];
+                }
                 i++;
             } else {
                 *(s1p++) = c0;
