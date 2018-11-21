@@ -665,11 +665,13 @@ int main(int argc, char *argv[])
 int get_sip_peername(char *data, int data_len, const char *tag, char *peername, int peername_len){
     unsigned long r,r2,peername_tag_len;
     const char *peername_tag = gettag(data,data_len,tag,&peername_tag_len);
-    if ((r=(unsigned long)memmem(peername_tag,peername_tag_len,"sip:",4))==0){
+    if ((r=(unsigned long)memmem(peername_tag,peername_tag_len,"sip:",4))==0 &&
+        (r=(unsigned long)memmem(peername_tag,peername_tag_len,"tel:",4))==0){
 	goto fail_exit;
     }
     r+=4;
-    if ((r2=(unsigned long)memmem(peername_tag,peername_tag_len,"@",1))==0){
+    if ((r2=(unsigned long)memmem(peername_tag,peername_tag_len,"@",1))==0 &&
+        (r2=(unsigned long)memmem(peername_tag,peername_tag_len,">",1))==0){
 	goto fail_exit;
     }
     if (r2<=r){
