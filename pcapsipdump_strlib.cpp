@@ -3,29 +3,27 @@
 #include "pcapsipdump_strlib.h"
 
 const char * gettag(const char *ptr, unsigned long len, const char *tag, unsigned long *gettaglen){
-    unsigned long l, tl;
+    unsigned long tl;
     const char *r, *lp;
 
     tl = strlen(tag);
-    r = (const char*)memmem(ptr, len, tag, tl);
-    if (r == NULL || (ptr != r && r[-1] != '\r' && r[-1] != '\n')) {
-        l = 0;
-        r = NULL;
-    } else {
+    for(r = ptr; r != NULL && r[-1] != '\r' && r[-1] != '\n';){
+        r = (const char*)memmem(r+1, len-(r-ptr)-2, tag, tl);
+    }
+    if(r) {
         r += tl;
         while (r[0] == ' ') {
             r++;
         }
-        lp = (const char*)memmem(r, len - (r - ptr), "\r\n", 2);
-        if (lp == NULL){
-            l = 0;
-            r = NULL;
-        } else {
-            l = lp - r;
+        for(lp = r; lp < (ptr+len); lp++){
+            if(*lp == '\r' || *lp == '\n'){
+                *gettaglen = lp - r;
+                return r;
+            }
         }
     }
-    *gettaglen = l;
-    return r;
+    *gettaglen = 0;
+    return NULL;
 }
 
 
