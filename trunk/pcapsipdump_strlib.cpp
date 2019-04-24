@@ -6,19 +6,21 @@ const char * gettag(const char *ptr, unsigned long len, const char *tag, unsigne
     unsigned long tl;
     const char *r, *lp;
 
-    tl = strlen(tag);
-    for(r = ptr; r != NULL && r[-1] != '\r' && r[-1] != '\n';){
-        r = (const char*)memmem(r+1, len-(r-ptr)-2, tag, tl);
-    }
-    if(r) {
-        r += tl;
-        while (r[0] == ' ') {
-            r++;
-        }
-        for(lp = r; lp < (ptr+len); lp++){
-            if(*lp == '\r' || *lp == '\n'){
-                *gettaglen = lp - r;
-                return r;
+    if(len > 1){
+        tl = strlen(tag);
+        for(r = ptr; r != NULL;){
+            r = (const char*)memmem(r+1, len-(r-ptr)-2, tag, tl);
+            if(r && (r[-1] == '\r' || r[-1] == '\n')) {
+                r += tl;
+                while (r[0] == ' ') {
+                    r++;
+                }
+                for(lp = r; lp < (ptr+len); lp++){
+                    if(*lp == '\r' || *lp == '\n'){
+                        *gettaglen = lp - r;
+                        return r;
+                    }
+                }
             }
         }
     }
