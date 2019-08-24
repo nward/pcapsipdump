@@ -28,10 +28,6 @@
 #include "trigger.h"
 #include "calltable.h"
 
-#ifndef MIN
-#define MIN(x,y) ((x) < (y) ? (x) : (y))
-#endif
-
 using namespace std;
 bool operator <(addr_addr_id const& a, addr_addr_id const& b)
 {
@@ -44,6 +40,11 @@ bool operator <(addr_addr_id const& a, addr_addr_id const& b)
 bool operator <(addr_port const& a, addr_port const& b)
 {
     return a.addr < b.addr || (a.addr == b.addr && a.port < b.port );
+}
+
+bool operator==(const calltable_element& lhs, const calltable_element& rhs)
+{
+    return (memcmp(lhs.call_id,rhs.call_id,MIN(lhs.call_id_len,32))==0);
 }
 #endif
 
@@ -141,7 +142,13 @@ int calltable::add_ip_port(
     ce->ip[ce->ip_n] = addr;
     ce->port[ce->ip_n] = port;
 #ifdef USE_CALLTABLE_CACHE
-    cache[(struct addr_port){addr, port}] = (struct ce_irtp_ssrc){ce, ce->ip_n, 0};
+    std::vector<calltable_element>::iterator it = std::find(table.begin(), table.end(), *ce);
+    if (it != table.end()) {
+        int idx = std::distance(table.begin(), it);
+        cache[(struct addr_port){addr, port}] = (struct idx_irtp_ssrc){idx, ce->ip_n, 0};
+    } else {
+        fprintf(stderr, "CE isn't in CT!\n");
+    }
 #endif
     ce->ip_n++;
     return 0;
@@ -155,13 +162,16 @@ int calltable::find_ip_port_ssrc(
             calltable_element **ce,
             int *idx_rtp)
 {
-    int i_leg,i_rtp;
+    int i_leg,i_rtp,idx;
 
 #ifdef USE_CALLTABLE_CACHE
     struct addr_port ap = {addr, port};
     while(true){
         if(this->cache.count(ap)){
-            *ce = cache[ap].ce;
+            idx = cache[ap].idx;
+            if (idx < 0)
+                return 0;
+            *ce = &table[idx];
             *idx_rtp = cache[ap].irtp;
             if(*ce != NULL){
                 if(ssrc != cache[ap].ssrc){ // new ssid
@@ -172,7 +182,7 @@ int calltable::find_ip_port_ssrc(
                     }else{
                         //got new ssrc in the same ongoing call - update table & cache
                         (*ce)->ssrc[*idx_rtp] = ssrc;
-                        cache[ap] = (struct ce_irtp_ssrc){*ce, *idx_rtp, ssrc};
+                        cache[ap] = (struct idx_irtp_ssrc){idx, *idx_rtp, ssrc};
                     }
                 }
                 return 1;
@@ -183,16 +193,19 @@ int calltable::find_ip_port_ssrc(
         break;
     }
 #endif
-    for (i_leg = 0; i_leg < (int)table.size(); i_leg++){
-        for(i_rtp=0; i_rtp < MIN(calltable_max_ip_per_call, table[i_leg].ip_n); i_rtp++){
-            if(table[i_leg].port[i_rtp] == port &&
-               table[i_leg].ip  [i_rtp] == addr){
-                if(!table[i_leg].had_bye || table[i_leg].ssrc[i_rtp]==ssrc){
+    int table_size = table.size();
+    for (i_leg = 0; i_leg < table_size; i_leg++){
+        calltable_element ce_i_leg;
+        ce_i_leg = table[i_leg];
+        for(i_rtp=0; i_rtp < MIN(calltable_max_ip_per_call, ce_i_leg.ip_n); i_rtp++){
+            if(ce_i_leg.port[i_rtp] == port &&
+               ce_i_leg.ip  [i_rtp] == addr){
+                if(!ce_i_leg.had_bye || ce_i_leg.ssrc[i_rtp]==ssrc){
 #ifdef USE_CALLTABLE_CACHE
-                    cache[ap] = (struct ce_irtp_ssrc){&table[i_leg], i_rtp, ssrc};
+                    cache[ap] = (struct idx_irtp_ssrc){i_leg, i_rtp, ssrc};
 #endif
-                    table[i_leg].ssrc[i_rtp]=ssrc;
-                    *ce = &table[i_leg];
+                    ce_i_leg.ssrc[i_rtp]=ssrc;
+                    *ce = &ce_i_leg;
                     *idx_rtp = i_rtp;
                     return 1;
                 }
@@ -202,14 +215,15 @@ int calltable::find_ip_port_ssrc(
 #ifdef USE_CALLTABLE_CACHE
     // add negative cache entry
     // TODO: how do we clean those up, to avoid memory leak?
-    cache[ap] = (struct ce_irtp_ssrc){NULL, -1, 0};
+    cache[ap] = (struct idx_irtp_ssrc){-1, -1, 0};
 #endif
     return 0;
 }
 
 int calltable::do_cleanup( time_t currtime ){
     int idx;
-    for (idx = 0; idx < (int)table.size(); idx++) {
+    int table_size = table.size();
+    for (idx = 0; idx < table_size; idx++) {
         if (table[idx].is_used && (
                     (currtime - table[idx].last_packet_time > 300) ||
                     (currtime - table[idx].first_packet_time > opt_absolute_timeout))){

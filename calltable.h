@@ -25,11 +25,16 @@
 #endif
 
 #include <vector>
+#include <algorithm>
 #include <string>
 #include <map>
 
 #include <pcap.h>
 #include <arpa/inet.h>
+
+#ifndef MIN
+#define MIN(x,y) ((x) < (y) ? (x) : (y))
+#endif
 
 #define calltable_max_ip_per_call 4
 
@@ -63,8 +68,8 @@ struct addr_port {
     in_addr_t addr;
     uint16_t  port;
 };
-struct ce_irtp_ssrc {
-    calltable_element *ce;
+struct idx_irtp_ssrc {
+    int idx;
     int irtp;
     uint32_t ssrc;
 };
@@ -111,7 +116,7 @@ class calltable
     private:
         time_t global_last_packet_time;
 #ifdef USE_CALLTABLE_CACHE
-        std::map <addr_port, ce_irtp_ssrc> cache;
+        std::map <addr_port, idx_irtp_ssrc> cache;
         std::map <std::string, int> call_id_cache;
 #endif
 };
