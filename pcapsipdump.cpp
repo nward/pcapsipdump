@@ -457,6 +457,11 @@ int main(int argc, char *argv[])
                 ntohs(*((uint16_t*)((char*)pkt_data + offset_to_ip - 2))) == 0x8100 &&
                 ntohs(*((uint16_t*)((char*)pkt_data + offset_to_ip + 2))) == 0x0800) {
                 header_ip = (iphdr *)((char*)pkt_data + offset_to_ip + 4);
+            } else if ((offset_to_ip == 14) &&
+                ntohs(*((uint16_t*)((char*)pkt_data + offset_to_ip - 2))) == 0x8100 &&
+                ntohs(*((uint16_t*)((char*)pkt_data + offset_to_ip + 2))) == 0x8100 &&
+                ntohs(*((uint16_t*)((char*)pkt_data + offset_to_ip + 6))) == 0x0800) {
+                header_ip = (iphdr *)((char*)pkt_data + offset_to_ip + 8);
             }
             header_ipv6=(ipv6hdr *)header_ip;
             if (header_ip->version == 4 && (header_ip->frag_off & htons(0x1fff)) > 0) { // fragment offset > 0
