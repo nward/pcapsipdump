@@ -55,22 +55,22 @@ calltable::calltable()
 }
 
 int calltable::add(
-	const char *call_id,
-	unsigned long call_id_len,
+        const char *call_id,
+        unsigned long call_id_len,
         const char *caller,
         const char *callee,
-	time_t time)
+        time_t time)
 {
     int idx = -1;
     for (int i = 0; i < (int)table.size(); i++) {
-	if (table[i].is_used == 0) {
-	    idx = i;
-	    break;
-	}
+        if (table[i].is_used == 0) {
+            idx = i;
+            break;
+        }
     }
     if (idx == -1) {
-	idx = table.size();
-	table.push_back(calltable_element());
+        idx = table.size();
+        table.push_back(calltable_element());
     }
     table[idx].is_used=1;
     table[idx].rtpmap_event = 101;
@@ -101,8 +101,8 @@ int calltable::add(
 }
 
 int calltable::find_by_call_id(
-	const char *call_id,
-	unsigned long call_id_len)
+        const char *call_id,
+        unsigned long call_id_len)
 {
 #ifdef USE_CALLTABLE_CACHE
     std::string s(call_id, call_id_len);
@@ -114,20 +114,20 @@ int calltable::find_by_call_id(
 #else
     int i;
     for (i = 0; i < (int)table.size(); i++) {
-	if ((table[i].is_used!=0)&&
-	    (table[i].call_id_len==call_id_len)&&
-	    (memcmp(table[i].call_id,call_id,MIN(call_id_len,32))==0)){
-	    return i;
-	}
+        if ((table[i].is_used!=0)&&
+            (table[i].call_id_len==call_id_len)&&
+            (memcmp(table[i].call_id,call_id,MIN(call_id_len,32))==0)){
+            return i;
+        }
     }
     return -1;
 #endif
 }
 
 int calltable::add_ip_port(
-	    calltable_element *ce,
-	    in_addr_t addr,
-	    unsigned short port)
+            calltable_element *ce,
+            in_addr_t addr,
+            unsigned short port)
 {
     if (ce->ip_n >= calltable_max_ip_per_call) {
         return -1;
@@ -210,11 +210,11 @@ int calltable::find_ip_port_ssrc(
 int calltable::do_cleanup( time_t currtime ){
     int idx;
     for (idx = 0; idx < (int)table.size(); idx++) {
-	if (table[idx].is_used && (
+        if (table[idx].is_used && (
                     (currtime - table[idx].last_packet_time > 300) ||
                     (currtime - table[idx].first_packet_time > opt_absolute_timeout))){
-	    if (table[idx].f_pcap != NULL){
-		pcap_dump_close(table[idx].f_pcap);
+            if (table[idx].f_pcap != NULL){
+                pcap_dump_close(table[idx].f_pcap);
                 if (erase_non_t38 && !table[idx].had_t38) {
                     unlink(table[idx].fn_pcap);
                 }else{
@@ -225,10 +225,10 @@ int calltable::do_cleanup( time_t currtime ){
                         table[idx].call_id,
                         table[idx].first_packet_time);
                 }
-	    }
-	    memset((void*)&table[idx],0,sizeof(table[idx]));
-	    table[idx].is_used=0;
-	    table[idx].ip_n=0;
+            }
+            memset((void*)&table[idx],0,sizeof(table[idx]));
+            table[idx].is_used=0;
+            table[idx].ip_n=0;
 #ifdef USE_CALLTABLE_CACHE
             for(int i_rtp=0; i_rtp<table[idx].ip_n; i_rtp++){
                 struct addr_port ap = {table[idx].ip[i_rtp],
@@ -240,7 +240,7 @@ int calltable::do_cleanup( time_t currtime ){
                 call_id_cache.erase(s);
             }
 #endif
-	}
+        }
     }
     return 0;
 }
